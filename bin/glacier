@@ -1,0 +1,10 @@
+#!/usr/bin/env perl
+# PODNAME: listvaults
+use strict;
+use WebService::Amazon::Glacier;
+use 5.010;
+
+my $envelope=WebService::Amazon::Glacier->new_with_command->run();
+if ( $envelope != 0 ){
+    exit(1);
+}
