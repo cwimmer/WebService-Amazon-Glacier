@@ -12,8 +12,12 @@ extends qw(WebService::Amazon::Glacier);
 
 sub run {
     my ($self)=@_;
-    foreach my $vault ($self->_list_vaults()){
-	say($vault->{'VaultName'});
+    try{
+	foreach my $vault ($self->_list_vaults()){
+	    say($vault->{'VaultName'});
+	}
+    }catch (WebService::Amazon::Glacier::GlacierError $e){
+	die $e->error_message;
     }
     return 0;
 }
