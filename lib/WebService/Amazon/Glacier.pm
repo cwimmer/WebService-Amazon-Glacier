@@ -111,34 +111,6 @@ sub _update_signer{
     $self->get_Net_Amazon_SignatureVersion4()->set_region($self->get_region());
 }
 
-=method list_vaults
-
-Returns an array of current vaults owned by the current AccountID.
-
-=cut
-sub list_vaults{
-    my $self=shift;
-    
-    my $hr=HTTP::Request->new('GET',"https://glacier.".$self->get_region().".amazonaws.com/".$self->get_AccountID()."/vaults", [ 
-				  'Host', "glacier.".$self->get_region().".amazonaws.com", 
-				  'Date', strftime("%Y%m%dT%H%M%SZ",gmtime(time())) , 
-				  'X-Amz-Date', strftime("%Y%m%dT%H%M%SZ",gmtime(time())) , 
-				  'x-amz-glacier-version', '2012-06-01',
-			       ]);
-    $hr->protocol('HTTP/1.1');
-    $self->get_Net_Amazon_SignatureVersion4()->set_request($hr);
-    my $response = $self->get_ua->request($self->get_Net_Amazon_SignatureVersion4()->get_authorized_request());
-    my @rv;
-    if ($response->is_success) {
-	my $vault_list = decode_json($response->decoded_content());
-	@rv=@{$vault_list->{'VaultList'}};
-    }
-    else {
-	die $response->status_line.":".$response->decoded_content;
-    }
-    
-    return (@rv);
-}
 
 sub _submit_request{
 

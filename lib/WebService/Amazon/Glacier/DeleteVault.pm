@@ -1,5 +1,5 @@
 use strict;
-package WebService::Amazon::Glacier::CreateVault;
+package WebService::Amazon::Glacier::DeleteVault;
 use MooseX::App::Command;
 use 5.010;
 use POSIX qw(strftime);
@@ -22,23 +22,23 @@ sub run {
     my ($self)=@_;
     
     try{
-	$self->_create_vault();
+	$self->_delete_vault();
     }catch (WebService::Amazon::Glacier::GlacierError $e){
 	die $e->error_message;
     }
     return 0;
 }
 
-=method _create_vault
+=method _delete_vault
 
-Requires vaultname to be set.  Creates the vault.  Throws an exception
-if it can't be created for any reason.
+Requires vaultname to be set.  Deletes the selected vault.  Throws an
+exception if it can't be created for any reason.
 
 =cut
-sub _create_vault{
+sub _delete_vault{
     my $self=shift;
     
-    my $hr=HTTP::Request->new('PUT',"https://glacier.".$self->get_region().".amazonaws.com/".$self->get_AccountID()."/vaults/".$self->get_vaultname(), [ 
+    my $hr=HTTP::Request->new('DELETE',"https://glacier.".$self->get_region().".amazonaws.com/".$self->get_AccountID()."/vaults/".$self->get_vaultname(), [ 
 				  'Host', "glacier.".$self->get_region().".amazonaws.com", 
 				  'Date', strftime("%Y%m%dT%H%M%SZ",gmtime(time())) , 
 				  'X-Amz-Date', strftime("%Y%m%dT%H%M%SZ",gmtime(time())) , 
