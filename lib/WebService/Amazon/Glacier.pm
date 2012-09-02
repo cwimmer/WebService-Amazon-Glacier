@@ -32,6 +32,7 @@ This module interacts with the Amazon Glacier service.
 option 'Access_Key_Id' => (
     is        => 'rw',
     isa       => 'Str',
+    required  => 1,
     reader    => 'get_Access_Key_ID',
     predicate => 'has_Access_Key_ID',
     );
@@ -39,6 +40,7 @@ option 'Access_Key_Id' => (
 option 'Secret_Access_Key' => (
     is        => 'rw',
     isa       => 'Str',
+    required  => 1,
     reader    => 'get_Secret_Access_Key',
     predicate => 'has_Secret_Access_Key',
     );
@@ -66,7 +68,15 @@ option 'region' => (
     default => 'us-east-1',
     );
 
-option 'ua' => (
+option 'service' => (
+    is      => 'rw',
+    isa     => 'Str',
+    writer  => 'set_service',
+    reader  => 'get_service',
+    default => 'glacier',
+    );
+
+has 'ua' => (
     is     => 'rw',
     isa    => 'Object',
     writer => 'set_ua',
@@ -82,12 +92,23 @@ This is the builder for this class.
 sub BUILD{
     my $self=shift;
     my $awsSign=new Net::Amazon::SignatureVersion4();
-    $awsSign->set_Access_Key_ID($self->get_Access_Key_ID());
-    $awsSign->set_Secret_Access_Key($self->get_Secret_Access_Key());
-    $awsSign->set_service('glacier');
-    $awsSign->set_region($self->get_region());
     $self->set_Net_Amazon_SignatureVersion4($awsSign);
+    $self->_update_signer();
     $self->set_ua(LWP::UserAgent->new( agent => 'perl-WebService::Amazon::Glacier'));
+}
+
+=method _update_signer
+
+This method is run before each invocation of the signer.  It updates
+the access key, service, region, etc.
+
+=cut
+sub _update_signer{
+    my $self=shift;
+    $self->get_Net_Amazon_SignatureVersion4()->set_Access_Key_ID($self->get_Access_Key_ID());
+    $self->get_Net_Amazon_SignatureVersion4()->set_Secret_Access_Key($self->get_Secret_Access_Key());
+    $self->get_Net_Amazon_SignatureVersion4()->set_service($self->get_service());
+    $self->get_Net_Amazon_SignatureVersion4()->set_region($self->get_region());
 }
 
 =method list_vaults
@@ -119,4 +140,14 @@ sub list_vaults{
     return (@rv);
 }
 
+sub _submit_request{
+
+    my ($self,$hr)=@_;
+    
+    $hr->protocol('HTTP/1.1');
+    $self->_update_signer();
+    $self->get_Net_Amazon_SignatureVersion4()->set_request($hr);
+    my $response = $self->get_ua->request($self->get_Net_Amazon_SignatureVersion4()->get_authorized_request());
+    return $response;
+}
 1;
