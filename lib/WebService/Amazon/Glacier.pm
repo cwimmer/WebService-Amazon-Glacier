@@ -16,16 +16,62 @@ use JSON;
 use 5.010;
 
 
-# ABSTRACT: Perl module to access Amazon's Glacier  service.
+# ABSTRACT: Perl module to access Amazon's Glacier service.
+
 # PODNAME: WebService::Amazon::Glacier
 
 =head1 SYNOPSIS
 
-use WebService::Amazon::Glacier;
+    glacier list_vaults --Access_Key_Id AKIDEXAMPLE \
+        --Secret_Access_Key wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY \
+        --region us-west-2
+
+    glacier list_vaults --config ~/.amazon.yaml
+
+This module uses MooseX::App::Plugin::Config for configuration, so see
+that module for usage instructions
+
+    usage:
+        glacier command [long options...]
+        glacier help
+        glacier command --help
+
+    global options:
+        --Access_Key_Id      [Required]
+        --AccountID          [Default:"-"]
+        --Secret_Access_Key  [Required]
+        --config             Path to command config file
+        --help --usage -?    Prints this usage information. [Flag]
+        --limit              [Default:"1000"; Integer]
+        --region             [Default:"us-east-1"]
+        --service            [Default:"glacier"]
+
+    available commands:
+        create_vault                
+        delete_vault                
+        delete_vault_notifications  
+        get_vault_notifications     
+        glacier_error               
+        help                        Prints this usage information
+        list_vaults                 
+        set_vault_notifications     
+
+
 
 =head2 DESCRIPTION
 
-This module interacts with the Amazon Glacier service.
+This module interacts with the Amazon Glacier service.  It is an
+extremely early version and is not yet complete.  It currently only
+has the ability to interact with Vault objects.  Future releases will
+allow interaction with Archives, Multipart uploads, and Jobs.
+
+The focus of this module is to be used as a command line tool.
+However, each of the modules may be imported and used by other modules
+as well.  Please provide feedback if you have problems in either case.
+
+Currently all the testing is performed manually.  In future releases,
+there will be a test suite for some offline testing.  There will also
+be a suite for testing against the live Glacier service.
 
 =cut 
 
@@ -68,7 +114,15 @@ option 'region' => (
     default => 'us-east-1',
     );
 
-option 'service' => (
+option 'limit' => (
+    is      => 'rw',
+    isa     => 'Int',
+    writer  => 'set_limit',
+    reader  => 'get_limit',
+    default => 1000,
+    );
+
+has 'service' => (
     is      => 'rw',
     isa     => 'Str',
     writer  => 'set_service',
@@ -84,11 +138,6 @@ has 'ua' => (
     );
 
 
-=method BUILD
-
-This is the builder for this class.
-
-=cut
 sub BUILD{
     my $self=shift;
     my $awsSign=new Net::Amazon::SignatureVersion4();
@@ -97,12 +146,6 @@ sub BUILD{
     $self->set_ua(LWP::UserAgent->new( agent => 'perl-WebService::Amazon::Glacier'));
 }
 
-=method _update_signer
-
-This method is run before each invocation of the signer.  It updates
-the access key, service, region, etc.
-
-=cut
 sub _update_signer{
     my $self=shift;
     $self->get_Net_Amazon_SignatureVersion4()->set_Access_Key_ID($self->get_Access_Key_ID());
@@ -120,6 +163,23 @@ sub _submit_request{
     $self->_update_signer();
     $self->get_Net_Amazon_SignatureVersion4()->set_request($hr);
     my $response = $self->get_ua->request($self->get_Net_Amazon_SignatureVersion4()->get_authorized_request());
+    if ( ! $response->is_success) {
+	use Data::Dumper;
+	my $error_detail=Data::Dumper->Dump([decode_json $response->decoded_content()]);
+	$error_detail.="CREQ: \n".$self->get_Net_Amazon_SignatureVersion4()->get_canonical_request();
+	$error_detail.="STS: \n".$self->get_Net_Amazon_SignatureVersion4()->get_string_to_sign();
+	die  WebService::Amazon::Glacier::GlacierError->new( error_code => $response->code(),
+							     error_message => $response->as_string()."\n".$error_detail,
+	    );
+    }
     return $response;
 }
 1;
+=begin Pod::Coverage
+
+BUILD
+_update_signer
+
+=end Pod::Coverage
+
+

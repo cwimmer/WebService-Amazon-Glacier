@@ -3,6 +3,8 @@ package WebService::Amazon::Glacier::GlacierError;
 use Moose;
 use 5.010;
 
+# ABSTRACT: This class encompasses Glacier errors.
+
 has 'error_code' => (
     is       => 'rw',
     isa      => 'Int',
